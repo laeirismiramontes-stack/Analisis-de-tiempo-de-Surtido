@@ -18,9 +18,9 @@ Tablero web para analizar los tiempos de surtido del reporte SAP **ZTPOENT**.
 
 ## Acceso y base de datos (Supabase)
 
-- Inicio de sesión con **correo y contraseña** (Supabase Auth). Cualquiera puede crear cuenta, pero solo ven información los correos de la tabla `usuarios_autorizados`.
+- Inicio de sesión con **correo y contraseña** (Supabase Auth). Cualquiera puede crear cuenta, pero solo ven información los correos de la tabla `surtido_usuarios`.
 - Roles: **admin** (sube el Excel y administra usuarios desde el botón *Usuarios*) y **lector** (solo consulta).
-- Tablas con **RLS** activado: `usuarios_autorizados`, `registros_surtido` (llave: folio de entrega) y `cargas` (bitácora de cada actualización). Los visitantes sin sesión no tienen acceso a ninguna tabla.
+- Tablas con **RLS** activado: `surtido_usuarios`, `surtido_registros` (llave: folio de entrega) y `surtido_cargas` (bitácora de cada actualización). Los visitantes sin sesión no tienen acceso a ninguna tabla.
 - Los datos no se guardan en este repositorio.
 
 ## Desarrollo

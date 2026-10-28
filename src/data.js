@@ -26,14 +26,14 @@ const check = ({ data, error }) => {
 
 // Rol del usuario en sesión: 'admin', 'lector' o null si no está autorizado.
 export async function currentRole(email) {
-  const rows = check(await supabase.from('usuarios_autorizados').select('rol').eq('email', email.toLowerCase()));
+  const rows = check(await supabase.from('surtido_usuarios').select('rol').eq('email', email.toLowerCase()));
   return rows[0]?.rol ?? null;
 }
 
 export async function loadStored() {
-  const rows = check(await supabase.rpc('obtener_registros')) || [];
+  const rows = check(await supabase.rpc('surtido_obtener_registros')) || [];
   const records = rows.map(([id, date, hour, who, user, plazo, min]) => ({ id, date, hour, who, user, plazo, min: Number(min) }));
-  const cargas = check(await supabase.from('cargas').select('*').order('creado_en', { ascending: false }).limit(1));
+  const cargas = check(await supabase.from('surtido_cargas').select('*').order('creado_en', { ascending: false }).limit(1));
   const c = cargas[0];
   const meta = c ? { lastLoad: c.creado_en, fileName: c.archivo, added: c.nuevos, updated: c.actualizados, by: c.cargado_por } : null;
   return { records, meta };
@@ -47,21 +47,21 @@ export async function saveIncoming(incoming, existingIds, fileName, onProgress) 
     actualizado_en: new Date().toISOString(),
   }));
   for (let i = 0; i < rows.length; i += UPSERT_CHUNK) {
-    check(await supabase.from('registros_surtido').upsert(rows.slice(i, i + UPSERT_CHUNK), { onConflict: 'folio_entrega' }));
+    check(await supabase.from('surtido_registros').upsert(rows.slice(i, i + UPSERT_CHUNK), { onConflict: 'folio_entrega' }));
     onProgress?.(Math.min(i + UPSERT_CHUNK, rows.length), rows.length);
   }
-  check(await supabase.from('cargas').insert({ archivo: fileName, registros: rows.length, nuevos: added, actualizados: rows.length - added }));
+  check(await supabase.from('surtido_cargas').insert({ archivo: fileName, registros: rows.length, nuevos: added, actualizados: rows.length - added }));
   return { added, updated: rows.length - added };
 }
 
 export const listUsers = async () =>
-  check(await supabase.from('usuarios_autorizados').select('*').order('creado_en'));
+  check(await supabase.from('surtido_usuarios').select('*').order('creado_en'));
 
 export const addUser = async (email, rol) =>
-  check(await supabase.from('usuarios_autorizados').upsert({ email: email.trim().toLowerCase(), rol }));
+  check(await supabase.from('surtido_usuarios').upsert({ email: email.trim().toLowerCase(), rol }));
 
 export const removeUser = async (email) =>
-  check(await supabase.from('usuarios_autorizados').delete().eq('email', email));
+  check(await supabase.from('surtido_usuarios').delete().eq('email', email));
 
 // Convierte un serial de Excel (días desde 1899-12-30) en fecha local sin desfase de zona horaria.
 function serialToParts(serial) {
