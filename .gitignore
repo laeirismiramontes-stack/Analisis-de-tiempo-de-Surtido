@@ -4,3 +4,7 @@ tools
 *.xlsx
 *.XLSX
 .vercel
+
+.vercel
+.env
+.env.*

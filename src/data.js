@@ -1,8 +1,10 @@
-// Lectura del reporte ZTPOENT (Excel) y almacenamiento local en IndexedDB.
+// Lectura del reporte ZTPOENT (Excel) y almacenamiento en Supabase.
 import * as XLSX from 'xlsx';
+import { createClient } from '@supabase/supabase-js';
 
-const DB_NAME = 'surtido-db';
-const STORE = 'kv';
+export const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_KEY);
+
+const UPSERT_CHUNK = 1000;
 
 const COLS = {
   fecha: 'Fecha del Pedido/Ticket',
@@ -17,37 +19,49 @@ const COLS = {
   pedido: 'Folio de Pedido/Ticket',
 };
 
-function openDb() {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, 1);
-    req.onupgradeneeded = () => req.result.createObjectStore(STORE);
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
+const check = ({ data, error }) => {
+  if (error) throw new Error(error.message);
+  return data;
+};
+
+// Rol del usuario en sesión: 'admin', 'lector' o null si no está autorizado.
+export async function currentRole(email) {
+  const rows = check(await supabase.from('usuarios_autorizados').select('rol').eq('email', email.toLowerCase()));
+  return rows[0]?.rol ?? null;
 }
 
-async function idb(mode, fn) {
-  const db = await openDb();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE, mode);
-    const req = fn(tx.objectStore(STORE));
-    tx.oncomplete = () => resolve(req && req.result);
-    tx.onerror = () => reject(tx.error);
-  });
+export async function loadStored() {
+  const rows = check(await supabase.rpc('obtener_registros')) || [];
+  const records = rows.map(([id, date, hour, who, user, plazo, min]) => ({ id, date, hour, who, user, plazo, min: Number(min) }));
+  const cargas = check(await supabase.from('cargas').select('*').order('creado_en', { ascending: false }).limit(1));
+  const c = cargas[0];
+  const meta = c ? { lastLoad: c.creado_en, fileName: c.archivo, added: c.nuevos, updated: c.actualizados, by: c.cargado_por } : null;
+  return { records, meta };
 }
 
-export const loadStored = async () => ({
-  records: (await idb('readonly', (s) => s.get('records'))) || [],
-  meta: (await idb('readonly', (s) => s.get('meta'))) || null,
-});
+// Sube los registros del archivo (insertando o actualizando por folio) y registra la carga.
+export async function saveIncoming(incoming, existingIds, fileName, onProgress) {
+  const added = incoming.filter((r) => !existingIds.has(r.id)).length;
+  const rows = [...new Map(incoming.map((r) => [r.id, r])).values()].map((r) => ({
+    folio_entrega: r.id, fecha: r.date, hora: r.hour, colaborador: r.who, usuario_sap: r.user, plazo: r.plazo, minutos: r.min,
+    actualizado_en: new Date().toISOString(),
+  }));
+  for (let i = 0; i < rows.length; i += UPSERT_CHUNK) {
+    check(await supabase.from('registros_surtido').upsert(rows.slice(i, i + UPSERT_CHUNK), { onConflict: 'folio_entrega' }));
+    onProgress?.(Math.min(i + UPSERT_CHUNK, rows.length), rows.length);
+  }
+  check(await supabase.from('cargas').insert({ archivo: fileName, registros: rows.length, nuevos: added, actualizados: rows.length - added }));
+  return { added, updated: rows.length - added };
+}
 
-export const saveStored = (records, meta) =>
-  idb('readwrite', (s) => {
-    s.put(records, 'records');
-    s.put(meta, 'meta');
-  });
+export const listUsers = async () =>
+  check(await supabase.from('usuarios_autorizados').select('*').order('creado_en'));
 
-export const clearStored = () => idb('readwrite', (s) => s.clear());
+export const addUser = async (email, rol) =>
+  check(await supabase.from('usuarios_autorizados').upsert({ email: email.trim().toLowerCase(), rol }));
+
+export const removeUser = async (email) =>
+  check(await supabase.from('usuarios_autorizados').delete().eq('email', email));
 
 // Convierte un serial de Excel (días desde 1899-12-30) en fecha local sin desfase de zona horaria.
 function serialToParts(serial) {

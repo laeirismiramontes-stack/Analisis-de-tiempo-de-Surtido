@@ -16,9 +16,21 @@ Tablero web para analizar los tiempos de surtido del reporte SAP **ZTPOENT**.
 2. Los registros se unen al histórico usando el **Folio de Entrega** como llave, así que basta subir solo los días nuevos (si un folio ya existe se actualiza, no se duplica).
 3. En el encabezado se muestra la fecha y hora de la última carga y hasta qué día hay datos.
 
-Los datos se guardan en el navegador (IndexedDB) de quien los carga; no se suben al repositorio ni a ningún servidor.
+## Acceso y base de datos (Supabase)
+
+- Inicio de sesión con **correo y contraseña** (Supabase Auth). Cualquiera puede crear cuenta, pero solo ven información los correos de la tabla `usuarios_autorizados`.
+- Roles: **admin** (sube el Excel y administra usuarios desde el botón *Usuarios*) y **lector** (solo consulta).
+- Tablas con **RLS** activado: `usuarios_autorizados`, `registros_surtido` (llave: folio de entrega) y `cargas` (bitácora de cada actualización). Los visitantes sin sesión no tienen acceso a ninguna tabla.
+- Los datos no se guardan en este repositorio.
 
 ## Desarrollo
+
+Crea un archivo `.env` con:
+
+```
+VITE_SUPABASE_URL=https://<proyecto>.supabase.co
+VITE_SUPABASE_KEY=<publishable key>
+```
 
 ```bash
 npm install

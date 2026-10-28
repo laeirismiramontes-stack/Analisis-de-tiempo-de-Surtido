@@ -9,6 +9,45 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   </head>
   <body>
+    <section class="auth" id="authView" hidden>
+      <form class="auth-card" id="authForm">
+        <div class="auth-h">
+          <span class="logo">K</span>
+          <div>
+            <h1>Análisis de Tiempo de Surtido</h1>
+            <p class="sub" id="authTitle">Inicia sesión con tu correo</p>
+          </div>
+        </div>
+        <div class="auth-b">
+          <label class="field" id="emailField">
+            <span>Correo electrónico</span>
+            <input type="email" id="authEmail" autocomplete="email" required />
+          </label>
+          <label class="field" id="passField">
+            <span>Contraseña</span>
+            <input type="password" id="authPass" autocomplete="current-password" minlength="8" required />
+          </label>
+          <button class="btn btn-red" id="authSubmit" type="submit">Entrar</button>
+          <p class="auth-msg" id="authMsg"></p>
+          <div class="auth-links">
+            <a href="#" id="toggleMode">¿No tienes cuenta? Crear cuenta</a>
+            <a href="#" id="forgotLink">Olvidé mi contraseña</a>
+          </div>
+        </div>
+      </form>
+    </section>
+
+    <section class="auth" id="deniedView" hidden>
+      <div class="auth-card">
+        <div class="auth-h"><span class="logo">K</span><div><h1>Acceso pendiente</h1></div></div>
+        <div class="auth-b">
+          <p>Tu cuenta <b id="deniedEmail"></b> aún no está autorizada para ver el tablero. Pide a un administrador que agregue tu correo.</p>
+          <button class="btn btn-red" data-logout type="button">Cerrar sesión</button>
+        </div>
+      </div>
+    </section>
+
+    <div id="mainView" hidden>
     <header class="topbar">
       <div class="brand">
         <span class="logo">K</span>
@@ -19,10 +58,15 @@
       </div>
       <div class="load">
         <div class="load-info" id="loadInfo">Sin datos cargados</div>
-        <label class="btn btn-light">
+        <label class="btn btn-light" id="uploadBtn" hidden>
           <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" hidden />
           <span>⟳ Actualizar base de datos</span>
         </label>
+        <button class="btn btn-ghost" id="usersBtn" type="button" hidden>👥 Usuarios</button>
+        <div class="who">
+          <span id="whoEmail"></span>
+          <button class="btn btn-ghost" data-logout type="button">Salir</button>
+        </div>
       </div>
     </header>
 
@@ -52,7 +96,7 @@
     <main id="app">
       <section class="empty" id="empty">
         <h2>Carga tu reporte para comenzar</h2>
-        <p>Usa <b>Actualizar base de datos</b> y selecciona el Excel ZTPOENT. Los datos se guardan en este navegador; en las siguientes cargas solo sube el archivo con los días nuevos y se agregarán al histórico sin duplicar folios.</p>
+        <p id="emptyMsg">Usa <b>Actualizar base de datos</b> y selecciona el Excel ZTPOENT. Los datos se guardan en la base compartida; en las siguientes cargas solo sube el archivo con los días nuevos y se agregarán al histórico sin duplicar folios.</p>
       </section>
 
       <div id="dash" hidden>
@@ -91,6 +135,23 @@
         </section>
       </div>
     </main>
+    </div>
+
+    <dialog class="dlg" id="usersDlg">
+      <header class="card-h">Usuarios autorizados <button class="x" id="usersClose" type="button" aria-label="Cerrar">✕</button></header>
+      <div class="card-b">
+        <form class="add-user" id="addUserForm">
+          <input type="email" id="newEmail" placeholder="correo@kuroda.com.mx" required />
+          <select id="newRol">
+            <option value="lector">Lector (solo consulta)</option>
+            <option value="admin">Admin (carga datos y usuarios)</option>
+          </select>
+          <button class="btn btn-red" type="submit">Agregar</button>
+        </form>
+        <div class="table-wrap" id="usersList"></div>
+        <p class="note">La persona debe crear su cuenta con el mismo correo. Solo los correos de esta lista pueden ver la información.</p>
+      </div>
+    </dialog>
 
     <div class="toast" id="toast" hidden></div>
     <script type="module" src="/src/main.js"></script>

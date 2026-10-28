@@ -1,6 +1,8 @@
 import './style.css';
 import { Chart, registerables } from 'chart.js';
-import { loadStored, saveStored, parseFile, mergeRecords } from './data.js';
+import {
+  supabase, currentRole, loadStored, saveIncoming, parseFile, mergeRecords, listUsers, addUser, removeUser,
+} from './data.js';
 import {
   DIAS, periodKey, periodLabel, listPeriods, timeStats, byHour, heatmap,
   ranking, bestPerPeriod, averages, trend,
@@ -18,7 +20,7 @@ const GRAN_TXT = { dia: 'día', semana: 'semana', mes: 'mes' };
 const TREND_LIMIT = { dia: 31, semana: 16, mes: 12 };
 
 const $ = (id) => document.getElementById(id);
-const state = { records: [], meta: null, gran: 'dia', period: null, plazo: 'ENTREGA INMEDIATA', outliers: true };
+const state = { records: [], meta: null, email: null, role: null, gran: 'dia', period: null, plazo: 'ENTREGA INMEDIATA', outliers: true };
 const charts = {};
 
 const nf = (x, d = 0) => (x == null ? '—' : x.toLocaleString('es-MX', { minimumFractionDigits: d, maximumFractionDigits: d }));
@@ -50,7 +52,8 @@ function renderLoadInfo() {
   $('loadInfo').innerHTML =
     `<b>Última carga:</b> ${when}<br>` +
     `Datos hasta ${last ? periodLabel(last, 'dia') : '—'} · ${nf(state.records.length)} registros` +
-    (m.added != null ? ` · +${nf(m.added)} nuevos` : '');
+    (m.added != null ? ` · +${nf(m.added)} nuevos` : '') +
+    (m.by ? `<br>por ${esc(m.by)}` : '');
 }
 
 $('fileInput').addEventListener('change', async (e) => {
@@ -61,11 +64,12 @@ $('fileInput').addEventListener('change', async (e) => {
   try {
     const incoming = await parseFile(file);
     if (!incoming.length) throw new Error('No se encontraron registros válidos en el archivo.');
-    const { records, added, updated } = mergeRecords(state.records, incoming);
-    const meta = { lastLoad: new Date().toISOString(), fileName: file.name, added, updated };
-    await saveStored(records, meta);
-    state.records = records;
-    state.meta = meta;
+    const existing = new Set(state.records.map((r) => r.id));
+    const { added, updated } = await saveIncoming(incoming, existing, file.name, (done, total) =>
+      toast(`Subiendo a la base de datos… ${nf(done)} de ${nf(total)}`),
+    );
+    state.records = mergeRecords(state.records, incoming).records;
+    state.meta = { lastLoad: new Date().toISOString(), fileName: file.name, added, updated, by: state.email };
     state.period = null;
     renderLoadInfo();
     render();
@@ -73,6 +77,164 @@ $('fileInput').addEventListener('change', async (e) => {
   } catch (err) {
     console.error(err);
     toast(err.message || 'No se pudo leer el archivo.', true);
+  }
+});
+
+// ---------- Sesión ----------
+
+let authMode = 'login'; // login | signup | reset | newpass
+const AUTH_TXT = {
+  login: ['Inicia sesión con tu correo', 'Entrar', '¿No tienes cuenta? Crear cuenta'],
+  signup: ['Crea tu cuenta con tu correo', 'Crear cuenta', '¿Ya tienes cuenta? Inicia sesión'],
+  reset: ['Te enviaremos un enlace para cambiar tu contraseña', 'Enviar enlace', 'Volver a iniciar sesión'],
+  newpass: ['Escribe tu nueva contraseña', 'Guardar contraseña', 'Volver a iniciar sesión'],
+};
+
+function setAuthMode(mode, msg = '', err = false) {
+  authMode = mode;
+  const [t, btn, link] = AUTH_TXT[mode];
+  $('authTitle').textContent = t;
+  $('authSubmit').textContent = btn;
+  $('toggleMode').textContent = link;
+  $('emailField').hidden = mode === 'newpass';
+  $('passField').hidden = mode === 'reset';
+  $('authEmail').required = mode !== 'newpass';
+  $('authPass').required = mode !== 'reset';
+  $('authPass').autocomplete = mode === 'login' ? 'current-password' : 'new-password';
+  $('forgotLink').hidden = mode !== 'login';
+  $('authMsg').textContent = msg;
+  $('authMsg').className = err ? 'auth-msg err' : 'auth-msg';
+}
+
+function showView(view) {
+  for (const v of ['authView', 'deniedView', 'mainView']) $(v).hidden = v !== view;
+}
+
+$('toggleMode').addEventListener('click', (e) => {
+  e.preventDefault();
+  setAuthMode(authMode === 'login' ? 'signup' : 'login');
+});
+$('forgotLink').addEventListener('click', (e) => {
+  e.preventDefault();
+  setAuthMode('reset');
+});
+
+$('authForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const email = $('authEmail').value.trim().toLowerCase();
+  const password = $('authPass').value;
+  const redirectTo = window.location.origin;
+  $('authSubmit').disabled = true;
+  try {
+    let res;
+    if (authMode === 'login') res = await supabase.auth.signInWithPassword({ email, password });
+    else if (authMode === 'signup') res = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: redirectTo } });
+    else if (authMode === 'reset') res = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+    else res = await supabase.auth.updateUser({ password });
+    if (res.error) throw res.error;
+
+    if (authMode === 'signup' && !res.data.session) setAuthMode('login', 'Te enviamos un correo para confirmar tu cuenta. Ábrelo y después inicia sesión.');
+    else if (authMode === 'reset') setAuthMode('login', 'Revisa tu correo: te enviamos el enlace para cambiar tu contraseña.');
+    else if (authMode === 'newpass') {
+      setAuthMode('login');
+      await enterApp(res.data.user);
+    }
+  } catch (err) {
+    const m = err.message || '';
+    const msg = /invalid login/i.test(m) ? 'Correo o contraseña incorrectos.'
+      : /not confirmed/i.test(m) ? 'Primero confirma tu correo con el enlace que te enviamos.'
+      : /already registered/i.test(m) ? 'Ese correo ya tiene cuenta. Inicia sesión.'
+      : /at least/i.test(m) ? 'La contraseña debe tener al menos 8 caracteres.'
+      : m;
+    setAuthMode(authMode, msg, true);
+  } finally {
+    $('authSubmit').disabled = false;
+  }
+});
+
+document.querySelectorAll('[data-logout]').forEach((b) =>
+  b.addEventListener('click', async () => {
+    await supabase.auth.signOut();
+    state.records = [];
+    state.meta = null;
+    setAuthMode('login');
+    showView('authView');
+  }),
+);
+
+async function enterApp(user) {
+  state.email = user.email;
+  try {
+    state.role = await currentRole(user.email);
+  } catch (err) {
+    console.error(err);
+    state.role = null;
+  }
+  if (!state.role) {
+    $('deniedEmail').textContent = user.email;
+    showView('deniedView');
+    return;
+  }
+  const admin = state.role === 'admin';
+  $('whoEmail').textContent = `${user.email} · ${admin ? 'Admin' : 'Lector'}`;
+  $('uploadBtn').hidden = !admin;
+  $('usersBtn').hidden = !admin;
+  $('emptyMsg').innerHTML = admin
+    ? $('emptyMsg').innerHTML
+    : 'Aún no hay información cargada. Un administrador debe subir el reporte ZTPOENT.';
+  showView('mainView');
+  $('loadInfo').textContent = 'Cargando información…';
+  try {
+    const { records, meta } = await loadStored();
+    state.records = records;
+    state.meta = meta;
+  } catch (err) {
+    console.error(err);
+    toast(`No se pudo leer la base de datos: ${err.message}`, true);
+  }
+  renderLoadInfo();
+  render();
+}
+
+// ---------- Usuarios (solo admin) ----------
+
+async function renderUsers() {
+  try {
+    const users = await listUsers();
+    $('usersList').innerHTML = `<table><thead><tr><th>Correo</th><th>Rol</th><th></th></tr></thead><tbody>${users
+      .map(
+        (u) => `<tr><td>${esc(u.email)}</td><td>${u.rol === 'admin' ? 'Admin' : 'Lector'}</td>
+        <td class="num">${u.email === state.email ? '<span class="muted">tú</span>' : `<button class="link-btn" data-del="${esc(u.email)}">Quitar</button>`}</td></tr>`,
+      )
+      .join('')}</tbody></table>`;
+  } catch (err) {
+    $('usersList').innerHTML = `<p class="muted">${esc(err.message)}</p>`;
+  }
+}
+
+$('usersBtn').addEventListener('click', () => {
+  $('usersDlg').showModal();
+  renderUsers();
+});
+$('usersClose').addEventListener('click', () => $('usersDlg').close());
+$('addUserForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  try {
+    await addUser($('newEmail').value, $('newRol').value);
+    $('newEmail').value = '';
+    renderUsers();
+  } catch (err) {
+    toast(err.message, true);
+  }
+});
+$('usersList').addEventListener('click', async (e) => {
+  const email = e.target.dataset?.del;
+  if (!email || !confirm(`¿Quitar el acceso a ${email}?`)) return;
+  try {
+    await removeUser(email);
+    renderUsers();
+  } catch (err) {
+    toast(err.message, true);
   }
 });
 
@@ -297,15 +459,19 @@ function drawChart(id, data, scales) {
 
 // ---------- Inicio ----------
 
-(async () => {
-  try {
-    const { records, meta } = await loadStored();
-    state.records = records;
-    state.meta = meta;
-  } catch (err) {
-    console.error(err);
-    toast('No se pudo abrir el almacenamiento local del navegador.', true);
+supabase.auth.onAuthStateChange((event) => {
+  if (event === 'PASSWORD_RECOVERY') {
+    setAuthMode('newpass');
+    showView('authView');
   }
-  renderLoadInfo();
-  render();
+});
+
+(async () => {
+  const { data } = await supabase.auth.getSession();
+  const recovering = window.location.hash.includes('type=recovery');
+  if (data.session && !recovering) await enterApp(data.session.user);
+  else if (!recovering) {
+    setAuthMode('login');
+    showView('authView');
+  }
 })();
