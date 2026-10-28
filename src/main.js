@@ -134,14 +134,15 @@ $('authForm').addEventListener('submit', async (e) => {
     if (res.error) throw res.error;
 
     if (authMode === 'signup' && !res.data.session) setAuthMode('login', 'Te enviamos un correo para confirmar tu cuenta. Ábrelo y después inicia sesión.');
-    else if (authMode === 'reset') setAuthMode('login', 'Revisa tu correo: te enviamos el enlace para cambiar tu contraseña.');
+    else if (authMode === 'reset') setAuthMode('login', 'Si ese correo tiene cuenta, te llegará un enlace para cambiar tu contraseña (revisa también spam). Si nunca creaste cuenta aquí, usa "Crear cuenta".');
     else if (authMode === 'newpass') {
       setAuthMode('login');
       await enterApp(res.data.user);
     }
   } catch (err) {
     const m = err.message || '';
-    const msg = /invalid login/i.test(m) ? 'Correo o contraseña incorrectos.'
+    const msg = /invalid login/i.test(m) ? 'Correo o contraseña incorrectos. Si es tu primera vez en este tablero, primero usa "Crear cuenta".'
+      : /rate limit/i.test(m) ? 'Se enviaron demasiados correos. Espera unos minutos e inténtalo de nuevo.'
       : /not confirmed/i.test(m) ? 'Primero confirma tu correo con el enlace que te enviamos.'
       : /already registered/i.test(m) ? 'Ese correo ya tiene cuenta. Inicia sesión.'
       : /at least/i.test(m) ? 'La contraseña debe tener al menos 8 caracteres.'
