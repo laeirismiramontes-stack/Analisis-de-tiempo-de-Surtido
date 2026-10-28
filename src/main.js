@@ -135,7 +135,9 @@ $('authForm').addEventListener('submit', async (e) => {
 
     if (authMode === 'signup' && !res.data.session) setAuthMode('login', 'Te enviamos un correo para confirmar tu cuenta. Ábrelo y después inicia sesión.');
     else if (authMode === 'reset') setAuthMode('login', 'Si ese correo tiene cuenta, te llegará un enlace para cambiar tu contraseña (revisa también spam). Si nunca creaste cuenta aquí, usa "Crear cuenta".');
-    else if (authMode === 'newpass') {
+    else {
+      // login, alta con sesión inmediata o nueva contraseña: entrar al tablero
+      $('authPass').value = '';
       setAuthMode('login');
       await enterApp(res.data.user);
     }
