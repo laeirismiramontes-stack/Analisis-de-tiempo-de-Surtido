@@ -1,0 +1,28 @@
+# Análisis de Tiempo de Surtido · Kuroda
+
+Tablero web para analizar los tiempos de surtido del reporte SAP **ZTPOENT**.
+
+## Qué muestra
+
+- **Filtro Día / Semana / Mes** con selector del periodo a revisar.
+- **Horas críticas de surtido**: pedidos por hora de pago, tiempo promedio por hora y mapa de calor día × hora.
+- **Ranking de surtidores** del periodo (menor tiempo promedio primero) y **mejor surtidor por día, semana o mes**.
+- **Promedio de pedidos** diario, semanal y mensual sobre todo el histórico.
+- Filtro por plazo de entrega y opción para excluir tiempos atípicos (> 120 min).
+
+## Actualizar la base de datos
+
+1. Clic en **Actualizar base de datos** y selecciona el Excel ZTPOENT.
+2. Los registros se unen al histórico usando el **Folio de Entrega** como llave, así que basta subir solo los días nuevos (si un folio ya existe se actualiza, no se duplica).
+3. En el encabezado se muestra la fecha y hora de la última carga y hasta qué día hay datos.
+
+Los datos se guardan en el navegador (IndexedDB) de quien los carga; no se suben al repositorio ni a ningún servidor.
+
+## Desarrollo
+
+```bash
+npm install
+npm run dev
+```
+
+`npm run build` genera la versión de producción en `dist/` (Vercel la detecta automáticamente como proyecto Vite).

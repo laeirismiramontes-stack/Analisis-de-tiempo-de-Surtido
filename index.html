@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Análisis de Tiempo de Surtido | Kuroda</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23D7181F'/><text x='16' y='23' font-size='20' font-family='Arial' font-weight='700' fill='white' text-anchor='middle'>K</text></svg>" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <span class="logo">K</span>
+        <div>
+          <h1>Análisis de Tiempo de Surtido</h1>
+          <p class="sub" id="subtitle">Reporte ZTPOENT</p>
+        </div>
+      </div>
+      <div class="load">
+        <div class="load-info" id="loadInfo">Sin datos cargados</div>
+        <label class="btn btn-light">
+          <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" hidden />
+          <span>⟳ Actualizar base de datos</span>
+        </label>
+      </div>
+    </header>
+
+    <nav class="toolbar">
+      <div class="seg" id="granSeg" role="tablist">
+        <button data-gran="dia" class="on">Día</button>
+        <button data-gran="semana">Semana</button>
+        <button data-gran="mes">Mes</button>
+      </div>
+      <label class="field">
+        <span>Periodo</span>
+        <select id="periodSel"></select>
+      </label>
+      <label class="field">
+        <span>Plazo de entrega</span>
+        <select id="plazoSel">
+          <option value="ENTREGA INMEDIATA">Entrega inmediata</option>
+          <option value="">Todos</option>
+        </select>
+      </label>
+      <label class="check">
+        <input type="checkbox" id="outlierChk" checked />
+        <span>Excluir tiempos atípicos (&gt; 120 min)</span>
+      </label>
+    </nav>
+
+    <main id="app">
+      <section class="empty" id="empty">
+        <h2>Carga tu reporte para comenzar</h2>
+        <p>Usa <b>Actualizar base de datos</b> y selecciona el Excel ZTPOENT. Los datos se guardan en este navegador; en las siguientes cargas solo sube el archivo con los días nuevos y se agregarán al histórico sin duplicar folios.</p>
+      </section>
+
+      <div id="dash" hidden>
+        <section class="kpis" id="kpis"></section>
+
+        <section class="grid2">
+          <article class="card wide">
+            <header class="card-h">Horas críticas de surtido <small id="hoursSub"></small></header>
+            <div class="card-b">
+              <div class="chips" id="criticalChips"></div>
+              <div class="chart-box"><canvas id="hourChart"></canvas></div>
+            </div>
+          </article>
+        </section>
+
+        <section class="grid2">
+          <article class="card">
+            <header class="card-h">Ranking de surtidores <small id="rankSub"></small></header>
+            <div class="card-b table-wrap" id="ranking"></div>
+          </article>
+          <article class="card">
+            <header class="card-h">Mejor surtidor por <span id="bestGranLbl">día</span></header>
+            <div class="card-b table-wrap" id="bestTable"></div>
+          </article>
+        </section>
+
+        <section class="grid2">
+          <article class="card">
+            <header class="card-h">Tendencia de pedidos y tiempo <small id="trendSub"></small></header>
+            <div class="card-b"><div class="chart-box"><canvas id="trendChart"></canvas></div></div>
+          </article>
+          <article class="card">
+            <header class="card-h">Mapa de calor · pedidos promedio por día y hora <small id="heatSub"></small></header>
+            <div class="card-b table-wrap" id="heatmap"></div>
+          </article>
+        </section>
+      </div>
+    </main>
+
+    <div class="toast" id="toast" hidden></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
