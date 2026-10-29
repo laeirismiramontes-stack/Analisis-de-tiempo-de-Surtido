@@ -222,12 +222,20 @@ $('usersBtn').addEventListener('click', () => {
 $('usersClose').addEventListener('click', () => $('usersDlg').close());
 $('addUserForm').addEventListener('submit', async (e) => {
   e.preventDefault();
+  const email = $('newEmail').value.trim().toLowerCase();
+  $('addUserBtn').disabled = true;
   try {
-    await addUser($('newEmail').value, $('newRol').value);
+    const res = await addUser(email, $('newPass').value, $('newRol').value);
     $('newEmail').value = '';
+    $('newPass').value = '';
+    toast(res.creado
+      ? `Usuario ${email} creado. Ya puede entrar con su correo y contraseña.`
+      : `${email} ya tenía cuenta: se le asignó la nueva contraseña y acceso al tablero.`);
     renderUsers();
   } catch (err) {
     toast(err.message, true);
+  } finally {
+    $('addUserBtn').disabled = false;
   }
 });
 $('usersList').addEventListener('click', async (e) => {

@@ -141,15 +141,16 @@
       <header class="card-h">Usuarios autorizados <button class="x" id="usersClose" type="button" aria-label="Cerrar">✕</button></header>
       <div class="card-b">
         <form class="add-user" id="addUserForm">
-          <input type="email" id="newEmail" placeholder="correo@kuroda.com.mx" required />
+          <input type="email" id="newEmail" placeholder="correo@kuroda.com" autocomplete="off" required />
+          <input type="text" id="newPass" placeholder="Contraseña (mín. 8)" autocomplete="new-password" minlength="8" required />
           <select id="newRol">
             <option value="lector">Lector (solo consulta)</option>
             <option value="admin">Admin (carga datos y usuarios)</option>
           </select>
-          <button class="btn btn-red" type="submit">Agregar</button>
+          <button class="btn btn-red" id="addUserBtn" type="submit">Crear usuario</button>
         </form>
         <div class="table-wrap" id="usersList"></div>
-        <p class="note">La persona debe crear su cuenta con el mismo correo. Solo los correos de esta lista pueden ver la información.</p>
+        <p class="note">La cuenta queda lista para entrar con ese correo y contraseña, sin confirmar por correo. Si el correo ya tiene cuenta, se le asigna la nueva contraseña (es la misma cuenta que usa en el sistema de inventarios).</p>
       </div>
     </dialog>
 

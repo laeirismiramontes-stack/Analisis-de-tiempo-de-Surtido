@@ -155,7 +155,7 @@ tr.best td:first-child { font-weight: 700; color: var(--good); }
 .dlg { border: 0; border-radius: var(--radius); padding: 0; width: min(560px, calc(100vw - 32px)); }
 .dlg::backdrop { background: rgba(0,0,0,.35); }
 .dlg .x { background: none; border: 0; color: #fff; font-size: 16px; cursor: pointer; }
-.add-user { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; margin-bottom: 12px; }
+.add-user { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
 .link-btn { background: none; border: 0; color: var(--red); cursor: pointer; font: inherit; }
 
 @media (max-width: 1000px) {

@@ -57,8 +57,15 @@ export async function saveIncoming(incoming, existingIds, fileName, onProgress) 
 export const listUsers = async () =>
   check(await supabase.from('surtido_usuarios').select('*').order('creado_en'));
 
-export const addUser = async (email, rol) =>
-  check(await supabase.from('surtido_usuarios').upsert({ email: email.trim().toLowerCase(), rol }));
+// Crea la cuenta (o le asigna la contraseña si ya existe) mediante la Edge Function, que valida que seas admin.
+export async function addUser(email, password, rol) {
+  const { data, error } = await supabase.functions.invoke('surtido-crear-usuario', { body: { email, password, rol } });
+  if (error) {
+    const detail = await error.context?.json?.().catch(() => null);
+    throw new Error(detail?.error || error.message);
+  }
+  return data;
+}
 
 export const removeUser = async (email) =>
   check(await supabase.from('surtido_usuarios').delete().eq('email', email));
